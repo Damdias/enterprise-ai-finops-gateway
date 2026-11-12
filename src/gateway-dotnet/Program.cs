@@ -20,6 +20,7 @@ if (app.Environment.IsDevelopment())
 
 
 app.UseHttpsRedirection();
+app.MapJobEndpoints();
 
 app.MapGet("/health", () =>
 {

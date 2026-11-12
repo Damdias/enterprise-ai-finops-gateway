@@ -1,28 +1,30 @@
 
 services:
-
   gateway-dotnet:
     build:
       context: ./src/gateway-dotnet
-      dockerfile: Dockerfile
-    container_name: finops-gateway
     ports:
       - "127.0.0.1:8081:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Router__BaseUrl: http://router-python:8000
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
     depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       router-python:
         condition: service_healthy
     networks:
       - finops-network
-    restart: unless-stopped
 
   router-python:
     build:
       context: ./src/router-python
-      dockerfile: Dockerfile
-    container_name: finops-router
     expose:
       - "8000"
     healthcheck:
@@ -34,11 +36,66 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 10s
     networks:
       - finops-network
-    restart: unless-stopped
+
+  worker-python:
+    build:
+      context: ./src/worker-python
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - finops-network
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - finops-network
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - finops-network
 
 networks:
   finops-network:
     driver: bridge
+
+volumes:
+  postgres-data:
+  rabbitmq-data:

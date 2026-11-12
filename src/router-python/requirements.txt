@@ -105,10 +105,14 @@ opentelemetry-sdk==1.45.2
     #   opentelemetry-exporter-otlp-proto-http
 opentelemetry-semantic-conventions==0.66b2
     # via opentelemetry-sdk
+pika==1.4.4
+    # via app (pyproject.toml)
 protobuf==7.36.2
     # via
     #   googleapis-common-protos
     #   opentelemetry-proto
+psycopg==3.3.9
+    # via app (pyproject.toml)
 pydantic==2.14.3
     # via
     #   fastapi
