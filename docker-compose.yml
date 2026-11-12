@@ -1,0 +1,44 @@
+
+services:
+
+  gateway-dotnet:
+    build:
+      context: ./src/gateway-dotnet
+      dockerfile: Dockerfile
+    container_name: finops-gateway
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Router__BaseUrl: http://router-python:8000
+    depends_on:
+      router-python:
+        condition: service_healthy
+    networks:
+      - finops-network
+    restart: unless-stopped
+
+  router-python:
+    build:
+      context: ./src/router-python
+      dockerfile: Dockerfile
+    container_name: finops-router
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - finops-network
+    restart: unless-stopped
+
+networks:
+  finops-network:
+    driver: bridge
