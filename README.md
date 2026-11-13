@@ -4,6 +4,69 @@ A microservices gateway for enterprise AI workloads, built with .NET and Python 
 
 > **Status:** early development. The AI router only exposes a health check, and document processing is simulated.
 
+## Run on a local dev box
+
+### 1. Install Docker
+
+Install [Docker Desktop](https://docs.docker.com/desktop/). It includes Docker Compose.
+
+### 2. Configure and validate
+
+```bash
+cp .env.example .env     # local credentials used by Compose
+docker compose config    # validates docker-compose.yml and resolves .env values
+```
+
+If `docker compose config` prints the merged configuration without errors, you're ready to go.
+
+### 3. Build and start the stack
+
+```bash
+docker compose up --build -d   # build images and run in the background
+docker compose ps              # every service should be "running" / "healthy"
+docker compose logs -f worker-python   # optional: follow a service's logs
+```
+
+### 4. Inspect PostgreSQL
+
+**From the terminal** with `psql` inside the container:
+
+```bash
+docker compose exec postgres \
+  psql -U finops -d finops \
+  -c "SELECT id, filename, status, created_at, completed_at FROM document_jobs ORDER BY created_at DESC;"
+```
+
+**From DBeaver** (or any SQL client), create a PostgreSQL connection with:
+
+| Setting | Value |
+|---|---|
+| Host | `localhost` |
+| Port | `5432` |
+| Database | `POSTGRES_DB` from `.env` (default `finops`) |
+| Username | `POSTGRES_USER` from `.env` (default `finops`) |
+| Password | `POSTGRES_PASSWORD` from `.env` |
+
+![DBeaver connection settings for the local PostgreSQL database](docs/images/dbeaver_connection.png)
+
+### 5. Inspect RabbitMQ
+
+Open the management UI at <http://localhost:15672> and sign in with `RABBITMQ_USER` / `RABBITMQ_PASSWORD` from `.env`.
+
+![RabbitMQ management UI login](docs/images/rabbitmq-url.png)
+
+Under **Queues and Streams**, the `document_jobs` queue shows messages published by the gateway and consumed by the worker:
+
+![The document_jobs queue in the RabbitMQ management UI](docs/images/document-job.png)
+
+### 6. Stop the stack
+
+```bash
+docker compose down      # stop containers, keep data
+docker compose down -v   # stop containers and delete the Postgres/RabbitMQ volumes
+```
+
+
 ## Architecture
 
 ```
