@@ -69,6 +69,12 @@ docker compose down -v   # stop containers and delete the Postgres/RabbitMQ volu
 
 ## Architecture
 
+<p align="center">
+  <img src="docs/images/enterprise-ai-finops-gateway.png"
+       alt="Enterprise AI FinOps Gateway overview: system architecture, key engineering decisions, and stage progress"
+       width="720">
+</p>
+
 ```
             ┌──────────────────┐   HTTP    ┌────────────────┐
 client ───▶ │  gateway-dotnet  │ ────────▶ │ router-python  │
